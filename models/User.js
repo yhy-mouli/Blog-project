@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Joi = require("joi");
+const jwt = require("jsonwebtoken");
 
 // User Schema
 const userSchema = new mongoose.Schema({
@@ -7,15 +8,15 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
-        minlenght: 2,
-        maxlinght: 100
+        minlength: 2,
+        maxlingth: 100
     },
     email: {
         type: String,
         required: true,
         trim: true,
-        minlenght: 5,
-        maxlinght: 100,
+        minlength: 5,
+        maxlingth: 100,
         unique: true,
     },
     password: {
@@ -24,7 +25,7 @@ const userSchema = new mongoose.Schema({
         trim: true,
         minlenght: 8,
     },
-    profilePhote: {
+    profilePhoto: {
         type: Object,
         default: {
             url: "https://pixabay.com/vectors/user-icon-person-personal-about-me-2935527/",
@@ -44,6 +45,11 @@ const userSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+// Generate token
+userSchema.methods.generateAuthToken = function () {
+    return jwt.sign({ id: this._id, isAdmin: this.isAdmin }, process.env.JWT_SECRET);
+}
+
 // User Model
 const User = mongoose.model("User", userSchema);
 
@@ -57,7 +63,17 @@ function validateRegisterUser(obj) {
     return schema.validate(obj);
 }
 
+// Validate login user
+function validateLoginUser(obj) {
+    const schema = Joi.object({
+        email: Joi.string().trim().required().min(5).max(100).email(),
+        password: Joi.string().trim().min(8).required()
+    });
+    return schema.validate(obj);
+}
+
 module.exports = {
     User,
-    validateRegisterUser
+    validateRegisterUser,
+    validateLoginUser
 }

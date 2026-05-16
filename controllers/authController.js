@@ -1,10 +1,10 @@
 const asyncHandler = require("express-async-handler");
 const bcrypt = require("bcryptjs");
-const { User, validateRegisterUser } = require("../models/User");
+const { User, validateRegisterUser, validateLoginUser } = require("../models/User");
 
 /**---------------------------------------------------------
  * @desc       register new user
- * @router     api/auth/register
+ * @route     api/auth/register
  * @method     Post
  * @access     public
  -----------------------------------------------------------*/
@@ -29,6 +29,47 @@ module.exports.registerUserController = asyncHandler(async (req, res) => {
         password: hashedPassword,
     });
     await user.save();
+
+    // @TODO - sending email (verify account if not verified)
+
     // 5. Send response to the client
-    res.status(200).json({ message: "You registered successfully, please log in" });
+    res
+        .status(201)
+        .json({ message: "You registered successfully, please log in" });
+})
+
+/**----------------------------------------------------------------
+ * @desc      login user
+ * @route     /api/auth/login
+ * @method    Post
+ * @access    public
+ ------------------------------------------------------------------*/
+module.exports.loginUserController = asyncHandler(async (req, res) => {
+    // 1.Validation
+    const { error } = validateLoginUser(req.body);
+    if (error) {
+        return res.status(400).json({ message: error.details[0].message });
+    }
+    // 2.Is user exist
+    const user = await User.findOne({ email: req.body.email });
+    if (!user) {
+        return res.status(400).json({ message: "invalid email or password!" });
+    }
+    // 3.Check the password
+    const isPasswordMatch = await bcrypt.compare(req.body.password, user.password);
+    if (!isPasswordMatch) {
+        return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    // @TODO - sending email (verify account if not verified)
+
+    // 4.Generate token (jwt)
+    const token = user.generateAuthToken();
+    // 5.Send response to the client
+    res.status(200).json({
+        _id: user._id,
+        isAdmin: user.isAdmin,
+        profilePhoto: user.profilePhoto,
+        token,
+    });
 })
